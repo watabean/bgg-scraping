@@ -44,7 +44,7 @@ const MAX_PAGE = 5;
         Number(document.querySelector<HTMLElement>("[class*=gameplay-weight]")?.innerText),
       );
       item.designers = await page.evaluate((): string[] =>
-        Array.from(document.querySelectorAll<HTMLInputElement>("popup-list > span[itemprop='creator'] > a")).map(
+        [...document.querySelectorAll<HTMLInputElement>("popup-list > span[itemprop='creator'] > a")].map(
           (el) => el?.innerText,
         ),
       );
@@ -60,7 +60,7 @@ const MAX_PAGE = 5;
       await page.waitForSelector(".summary");
       item.titleJapanese = await page.evaluate(
         (): string =>
-          Array.from(document.querySelectorAll<HTMLInputElement>(".summary-item-section > ul > li"))
+          [...document.querySelectorAll<HTMLInputElement>(".summary-item-section > ul > li")]
             .filter((li) => li.innerText.includes("Japanese"))
             .map((li) => {
               const titleElement = li.closest(".summary-item")?.querySelector(".summary-item-title > a");
