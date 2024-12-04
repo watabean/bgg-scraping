@@ -16,12 +16,18 @@ const MAX_PAGE = 5;
     const pageItems = await page.evaluate((): Item[] => {
       const items: Item[] = [];
       document.querySelectorAll("#row_").forEach((el, j) => {
-        const rank = Number(el.querySelector<HTMLElement>(".collection_rank")?.innerText);
-        const title = el.querySelector<HTMLElement>(`#results_objectname${j + 1} > a`)?.innerText;
+        const rank = Number(
+          el.querySelector<HTMLElement>(".collection_rank")?.innerText,
+        );
+        const title = el.querySelector<HTMLElement>(
+          `#results_objectname${j + 1} > a`,
+        )?.innerText;
         const year = el
           .querySelector<HTMLElement>(`#results_objectname${j + 1} > span`)
           ?.innerText.replace(/[()]/g, "");
-        const score = Number(el.querySelector<HTMLElement>(".collection_bggrating")?.innerText);
+        const score = Number(
+          el.querySelector<HTMLElement>(".collection_bggrating")?.innerText,
+        );
         const url = el.querySelector<HTMLAnchorElement>(".primary")?.href;
         items.push({
           rank,
@@ -41,16 +47,23 @@ const MAX_PAGE = 5;
       await page.goto(item.url);
       await page.waitForSelector("[class*=gameplay-weight]");
       item.weight = await page.evaluate((): number =>
-        Number(document.querySelector<HTMLElement>("[class*=gameplay-weight]")?.innerText),
+        Number(
+          document.querySelector<HTMLElement>("[class*=gameplay-weight]")
+            ?.innerText,
+        ),
       );
       item.designers = await page.evaluate((): string[] =>
-        [...document.querySelectorAll<HTMLInputElement>("popup-list > span[itemprop='creator'] > a")].map(
-          (el) => el?.innerText,
-        ),
+        [
+          ...document.querySelectorAll<HTMLInputElement>(
+            "popup-list > span[itemprop='creator'] > a",
+          ),
+        ].map((el) => el?.innerText),
       );
       console.log(`designers: ${item.designers}`);
       item.bestPlayers = await page.evaluate((): number[] => {
-        const playersText = document.querySelector<HTMLElement>(".gameplay-item-secondary button")?.innerText;
+        const playersText = document.querySelector<HTMLElement>(
+          ".gameplay-item-secondary button",
+        )?.innerText;
         const match = playersText?.match(/Best: ([^\s]+)/);
         const result = match ? match[1].split("–").map(Number) : [];
         return result;
@@ -60,17 +73,25 @@ const MAX_PAGE = 5;
       await page.waitForSelector(".summary");
       item.titleJapanese = await page.evaluate(
         (): string =>
-          [...document.querySelectorAll<HTMLInputElement>(".summary-item-section > ul > li")]
+          [
+            ...document.querySelectorAll<HTMLInputElement>(
+              ".summary-item-section > ul > li",
+            ),
+          ]
             .filter((li) => li.innerText.includes("Japanese"))
             .map((li) => {
-              const titleElement = li.closest(".summary-item")?.querySelector(".summary-item-title > a");
-              const japaneseTitle = titleElement?.childNodes[0]?.textContent?.trim() ?? ""; // 最初のテキストノードを取得
+              const titleElement = li
+                .closest(".summary-item")
+                ?.querySelector(".summary-item-title > a");
+              const japaneseTitle =
+                titleElement?.childNodes[0]?.textContent?.trim() ?? ""; // 最初のテキストノードを取得
               return japaneseTitle;
             })
             .filter((str) => {
               const containsJapanese = (str: string) => {
                 // 日本語のUnicode範囲を含む正規表現
-                const japaneseRegex = /[\u3040-\u30FF\u4E00-\u9FFF\uFF66-\uFF9F]/;
+                const japaneseRegex =
+                  /[\u3040-\u30FF\u4E00-\u9FFF\uFF66-\uFF9F]/;
                 return japaneseRegex.test(str);
               };
               return containsJapanese(str);
@@ -83,9 +104,17 @@ const MAX_PAGE = 5;
   }
   console.table(allItems);
   exportData(
-    ["rank", "title", "titleJapanese", "year", "score", "weight", "bestPlayers", "designers", "url"] as Array<
-      keyof Item
-    >,
+    [
+      "rank",
+      "title",
+      "titleJapanese",
+      "year",
+      "score",
+      "weight",
+      "bestPlayers",
+      "designers",
+      "url",
+    ] as Array<keyof Item>,
     allItems,
   );
   browser.close();
