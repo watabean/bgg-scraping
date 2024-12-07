@@ -22,16 +22,10 @@ export type Item = {
  * @param allItems 出力する要素
  * @param filename ファイル名
  */
-export const exportData = (
-  heading: Array<keyof Item>,
-  allItems: Item[],
-  filename: string = "out.csv",
-) => {
+export const exportData = (heading: Array<keyof Item>, allItems: Item[], filename: string = "out.csv") => {
   fs.writeFile(
     `${__dirname}/output/${filename}`,
-    allItems
-      .map((item) => heading.map((prop) => `"${item[prop]}"`).join(","))
-      .join("\n"),
+    allItems.map((item) => heading.map((prop) => `"${item[prop]}"`).join(",")).join("\n"),
     (err) => {
       if (err) console.error(err);
     },
