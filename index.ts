@@ -43,8 +43,8 @@ const MAX_PAGE = 5;
       console.log(`designers: ${item.designers}`);
       item.bestPlayers = await page.evaluate((): number[] => {
         const playersText = document.querySelector<HTMLElement>(".gameplay-item-secondary button")?.innerText;
-        const match = playersText?.match(/Best: ([^\s]+)/);
-        const result = match ? match[1].split("–").map(Number) : [];
+        const match = playersText?.match(/Best: (.+)$/);
+        const result = match ? match[1].split(/[,–]/).map(Number) : [];
         return result;
       });
       console.log(`bestPlayers: ${item.bestPlayers}`);
