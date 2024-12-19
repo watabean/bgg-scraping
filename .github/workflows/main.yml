@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Build TypeScript
+        run: npm run build
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
@@ -44,4 +47,5 @@ jobs:
             --region ${{ env.REGION }} \
             --entry-point handler \
             --memory 512MB \
-            --timeout 1200s
+            --timeout 1200s \
+            --source dist
