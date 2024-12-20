@@ -43,7 +43,6 @@ jobs:
 
       - name: Deploy to Cloud Functions
         run: |
-          ls -la dist/
           gcloud functions deploy ${{ env.FUNCTION_NAME }} \
             --runtime nodejs22 \
             --trigger-http \
@@ -52,5 +51,4 @@ jobs:
             --entry-point scrapingBGG \
             --memory 512MB \
             --timeout 1200s \
-            --source . \
-            --verbosity=debug
+            --source .
