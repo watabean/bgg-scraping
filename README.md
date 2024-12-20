@@ -17,3 +17,8 @@ npm install
 ```bash
 npm start
 ```
+
+```bash
+npx functions-framework --target=scrapingBGG
+curl http://localhost:8080/
+```
