@@ -48,7 +48,7 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --region ${{ env.REGION }} \
-            --entry-point handler \
+            --entry-point scrapingBGG \
             --memory 512MB \
             --timeout 1200s \
             --source dist
