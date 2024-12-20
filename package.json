@@ -1,7 +1,7 @@
 {
   "name": "bgg-scraping",
   "version": "1.0.0",
-  "main": "dist/index.js",
+  "main": "dist/handler.js",
   "scripts": {
     "build": "tsc",
     "start": "npx ts-node index.ts",
