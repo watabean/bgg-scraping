@@ -52,5 +52,5 @@ jobs:
             --entry-point scrapingBGG \
             --memory 512MB \
             --timeout 1200s \
-            --source dist \
+            --source . \
             --verbosity=debug
