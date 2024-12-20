@@ -27,7 +27,7 @@ jobs:
 
       - name: Build TypeScript
         run: |
-          npm run build
+          npm run pre-build
           cp package.json dist/
           cp package-lock.json dist/
 
