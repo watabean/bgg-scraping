@@ -30,7 +30,6 @@ jobs:
           npm run build
           cp package.json dist/
           cp package-lock.json dist/
-          npm install --production --prefix dist
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1

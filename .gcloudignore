@@ -3,3 +3,4 @@
 
 # upload list
 !dist
+!node_modules
