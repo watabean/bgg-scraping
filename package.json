@@ -5,7 +5,7 @@
   "scripts": {
     "gcp-build": "",
     "build": "tsc",
-    "start": "npx ts-node index.ts",
+    "start": "npx ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
