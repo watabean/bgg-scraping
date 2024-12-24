@@ -28,8 +28,6 @@ jobs:
       - name: Build TypeScript
         run: |
           npm run build
-          cp package.json dist/
-          cp package-lock.json dist/
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1

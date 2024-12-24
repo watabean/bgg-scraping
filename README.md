@@ -41,5 +41,4 @@ You can test the server by sending a request:
 
 ```bash
 curl http://localhost:8080/
-
 ```
