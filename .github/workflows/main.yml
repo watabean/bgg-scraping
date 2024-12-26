@@ -28,6 +28,8 @@ jobs:
       - name: Build TypeScript
         run: |
           npm run build
+          rm -rf node_modules
+          npm install --production
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
