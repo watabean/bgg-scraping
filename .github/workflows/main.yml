@@ -27,7 +27,7 @@ jobs:
 
       - name: Build TypeScript
         run: |
-          npm run build
+          npm run prebuild
           rm -rf node_modules
           npm install --omit=dev
 
@@ -43,7 +43,6 @@ jobs:
 
       - name: Deploy to Cloud Functions
         run: |
-          tree
           gcloud functions deploy ${{ env.FUNCTION_NAME }} \
             --runtime nodejs22 \
             --trigger-http \
