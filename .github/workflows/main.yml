@@ -27,9 +27,7 @@ jobs:
 
       - name: Build TypeScript
         run: |
-          npm run prebuild
-          rm -rf node_modules
-          npm install --omit=dev
+          npm run build
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
@@ -43,6 +41,7 @@ jobs:
 
       - name: Deploy to Cloud Functions
         run: |
+          ls -al
           gcloud functions deploy ${{ env.FUNCTION_NAME }} \
             --runtime nodejs22 \
             --trigger-http \
