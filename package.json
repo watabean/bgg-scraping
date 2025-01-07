@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "dist/handler.js",
   "scripts": {
-    "gcp-build": "",
     "build": "tsc",
     "start": "npx ts-node src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "gcp-build": ""
   },
   "keywords": [],
   "author": "",
