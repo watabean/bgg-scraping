@@ -2,6 +2,6 @@
 *
 
 # But include these:
-!dist/**
+!/dist/**
 !package.json
 !package-lock.json
