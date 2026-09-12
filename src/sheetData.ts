@@ -3,6 +3,11 @@ import { Item } from "./commons";
 
 type SheetValue = string | number;
 
+type TargetSheet = {
+  sheetId: number;
+  rowCount: number;
+};
+
 const DATA_COLUMNS = [
   "rank",
   "title",
@@ -38,8 +43,6 @@ const getMinimumItemCount = (): number => {
   return value;
 };
 
-const quoteSheetName = (sheetName: string): string => `'${sheetName.replace(/'/g, "''")}'`;
-
 const itemValueToSheetValue = (value: Item[keyof Item]): SheetValue => {
   if (Array.isArray(value)) {
     return value.join(",");
@@ -69,6 +72,12 @@ export const assertValidItems = (items: Item[], minimumItemCount: number): void 
 
     if (typeof item.title !== "string" || !item.title.trim()) {
       throw new Error(`Missing title at rank ${item.rank}`);
+    }
+    if (typeof item.titleJapanese !== "string") {
+      throw new Error(`Invalid Japanese title at rank ${item.rank}`);
+    }
+    if (typeof item.year !== "string" || !item.year.trim()) {
+      throw new Error(`Invalid year at rank ${item.rank}`);
     }
     if (typeof item.url !== "string" || !item.url.startsWith("https://boardgamegeek.com/boardgame/")) {
       throw new Error(`Invalid BGG URL at rank ${item.rank}: ${item.url}`);
@@ -107,17 +116,33 @@ const ensureSheetsExist = async (
   sheets: sheets_v4.Sheets,
   spreadsheetId: string,
   sheetNames: string[],
-): Promise<void> => {
-  const spreadsheet = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: "sheets.properties.title",
-  });
-  const existingSheetNames = new Set(
-    spreadsheet.data.sheets
-      ?.map((sheet) => sheet.properties?.title)
-      .filter((title): title is string => Boolean(title)) ?? [],
-  );
-  const missingSheetNames = sheetNames.filter((sheetName) => !existingSheetNames.has(sheetName));
+): Promise<Map<string, TargetSheet>> => {
+  const getTargetSheets = async (): Promise<Map<string, TargetSheet>> => {
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets.properties(sheetId,title,gridProperties.rowCount)",
+    });
+    const targets = new Map<string, TargetSheet>();
+
+    for (const sheet of spreadsheet.data.sheets ?? []) {
+      const properties = sheet.properties;
+      if (
+        typeof properties?.title === "string" &&
+        typeof properties.sheetId === "number" &&
+        typeof properties.gridProperties?.rowCount === "number"
+      ) {
+        targets.set(properties.title, {
+          sheetId: properties.sheetId,
+          rowCount: properties.gridProperties.rowCount,
+        });
+      }
+    }
+
+    return targets;
+  };
+
+  let targetSheets = await getTargetSheets();
+  const missingSheetNames = sheetNames.filter((sheetName) => !targetSheets.has(sheetName));
 
   if (missingSheetNames.length > 0) {
     await sheets.spreadsheets.batchUpdate({
@@ -126,7 +151,89 @@ const ensureSheetsExist = async (
         requests: missingSheetNames.map((title) => ({ addSheet: { properties: { title } } })),
       },
     });
+    targetSheets = await getTargetSheets();
   }
+
+  for (const sheetName of sheetNames) {
+    if (!targetSheets.has(sheetName)) {
+      throw new Error(`Failed to resolve sheet properties: ${sheetName}`);
+    }
+  }
+
+  return targetSheets;
+};
+
+const toRowData = (row: SheetValue[]): sheets_v4.Schema$RowData => ({
+  values: row.map((value) => ({
+    userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: value },
+  })),
+});
+
+export const createSheetUpdateRequests = (
+  rows: SheetValue[][],
+  itemCount: number,
+  updatedAt: string,
+  dataSheet: TargetSheet,
+  metadataSheet: TargetSheet,
+): sheets_v4.Schema$Request[] => {
+  const metadataRows: SheetValue[][] = [
+    ["key", "value"],
+    ["lastUpdatedAt", updatedAt],
+    ["itemCount", itemCount],
+    ["source", "BoardGameGeek"],
+    ["schemaVersion", 1],
+  ];
+  const requests: sheets_v4.Schema$Request[] = [];
+
+  if (rows.length > dataSheet.rowCount) {
+    requests.push({
+      appendDimension: {
+        sheetId: dataSheet.sheetId,
+        dimension: "ROWS",
+        length: rows.length - dataSheet.rowCount,
+      },
+    });
+  }
+  if (metadataRows.length > metadataSheet.rowCount) {
+    requests.push({
+      appendDimension: {
+        sheetId: metadataSheet.sheetId,
+        dimension: "ROWS",
+        length: metadataRows.length - metadataSheet.rowCount,
+      },
+    });
+  }
+
+  requests.push(
+    {
+      updateCells: {
+        range: {
+          sheetId: dataSheet.sheetId,
+          startRowIndex: 0,
+          endRowIndex: Math.max(dataSheet.rowCount, rows.length),
+          startColumnIndex: 0,
+          endColumnIndex: DATA_COLUMNS.length,
+        },
+        rows: rows.map(toRowData),
+        fields: "userEnteredValue",
+      },
+    },
+    {
+      updateCells: {
+        range: {
+          sheetId: metadataSheet.sheetId,
+          startRowIndex: 0,
+          endRowIndex: Math.max(metadataSheet.rowCount, metadataRows.length),
+          startColumnIndex: 0,
+          endColumnIndex: 2,
+        },
+        rows: metadataRows.map(toRowData),
+        fields: "userEnteredValue",
+      },
+    },
+  );
+
+  return requests;
 };
 
 export const replaceSheetData = async (items: Item[], now: Date = new Date()): Promise<SheetUpdateResult> => {
@@ -144,37 +251,18 @@ export const replaceSheetData = async (items: Item[], now: Date = new Date()): P
   });
   const sheets = google.sheets({ version: "v4", auth });
 
-  await ensureSheetsExist(sheets, spreadsheetId, [dataSheetName, metadataSheetName]);
-
   const rows = createSheetRows(items);
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `${quoteSheetName(dataSheetName)}!A1`,
-    valueInputOption: "RAW",
-    requestBody: {
-      majorDimension: "ROWS",
-      values: rows,
-    },
-  });
+  const targetSheets = await ensureSheetsExist(sheets, spreadsheetId, [dataSheetName, metadataSheetName]);
+  const dataSheet = targetSheets.get(dataSheetName);
+  const metadataSheet = targetSheets.get(metadataSheetName);
+  if (!dataSheet || !metadataSheet) {
+    throw new Error("Failed to resolve target sheets");
+  }
 
-  await sheets.spreadsheets.values.clear({
+  await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
-    range: `${quoteSheetName(dataSheetName)}!A${rows.length + 1}:I`,
-  });
-
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `${quoteSheetName(metadataSheetName)}!A1`,
-    valueInputOption: "RAW",
     requestBody: {
-      majorDimension: "ROWS",
-      values: [
-        ["key", "value"],
-        ["lastUpdatedAt", updatedAt],
-        ["itemCount", items.length],
-        ["source", "BoardGameGeek"],
-        ["schemaVersion", 1],
-      ],
+      requests: createSheetUpdateRequests(rows, items.length, updatedAt, dataSheet, metadataSheet),
     },
   });
 

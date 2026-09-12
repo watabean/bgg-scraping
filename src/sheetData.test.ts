@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Item } from "./commons";
-import { assertDistinctSheetNames, assertValidItems, createSheetRows } from "./sheetData";
+import { assertDistinctSheetNames, assertValidItems, createSheetRows, createSheetUpdateRequests } from "./sheetData";
 
 const createItem = (overrides: Partial<Item> = {}): Item => ({
   keyword: "",
@@ -51,13 +51,12 @@ test("assertValidItems rejects a missing rank", () => {
 });
 
 test("assertValidItems rejects missing runtime string values", () => {
+  assert.throws(() => assertValidItems([createItem({ title: undefined as unknown as string })], 1), /Missing title/);
+  assert.throws(() => assertValidItems([createItem({ url: undefined as unknown as string })], 1), /Invalid BGG URL/);
+  assert.throws(() => assertValidItems([createItem({ year: undefined as unknown as string })], 1), /Invalid year/);
   assert.throws(
-    () => assertValidItems([createItem({ title: undefined as unknown as string })], 1),
-    /Missing title/,
-  );
-  assert.throws(
-    () => assertValidItems([createItem({ url: undefined as unknown as string })], 1),
-    /Invalid BGG URL/,
+    () => assertValidItems([createItem({ titleJapanese: undefined as unknown as string })], 1),
+    /Invalid Japanese title/,
   );
 });
 
@@ -74,4 +73,25 @@ test("assertValidItems accepts valid unique items", () => {
 test("assertDistinctSheetNames rejects overlapping targets", () => {
   assert.throws(() => assertDistinctSheetNames("data", "data"), /must be different/);
   assert.doesNotThrow(() => assertDistinctSheetNames("data", "metadata"));
+});
+
+test("createSheetUpdateRequests publishes data and metadata in one batch", () => {
+  const rows = createSheetRows([createItem()]);
+  const requests = createSheetUpdateRequests(
+    rows,
+    1,
+    "2026-09-12T00:00:00.000Z",
+    { sheetId: 10, rowCount: 100 },
+    { sheetId: 20, rowCount: 100 },
+  );
+
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].updateCells?.range?.sheetId, 10);
+  assert.equal(requests[0].updateCells?.range?.endRowIndex, 100);
+  assert.equal(requests[0].updateCells?.rows?.length, 2);
+  assert.equal(requests[1].updateCells?.range?.sheetId, 20);
+  assert.equal(
+    requests[1].updateCells?.rows?.[1].values?.[1].userEnteredValue?.stringValue,
+    "2026-09-12T00:00:00.000Z",
+  );
 });

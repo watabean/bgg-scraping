@@ -8,27 +8,34 @@ The time-driven trigger calls the Cloud Run Jobs API and finishes as soon as the
 Enable the APIs used for deployment, execution, and spreadsheet updates:
 
 ```bash
-gcloud services enable run.googleapis.com sheets.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+gcloud services enable run.googleapis.com sheets.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --project=green-carrier-297111
 ```
 
 Create the dedicated runtime service account referenced by the deployment workflow:
 
 ```bash
-gcloud iam service-accounts create bgg-scraping --display-name="BGG scraping Cloud Run Job"
+gcloud iam service-accounts create bgg-scraping --display-name="BGG scraping Cloud Run Job" --project=green-carrier-297111
 ```
 
 The GitHub Actions deployer stored in `GCP_SA_KEY` must be allowed to attach this runtime identity. Replace
 `GITHUB_ACTIONS_SERVICE_ACCOUNT` with that service account's email:
 
 ```bash
-gcloud iam service-accounts add-iam-policy-binding bgg-scraping@green-carrier-297111.iam.gserviceaccount.com --member="serviceAccount:GITHUB_ACTIONS_SERVICE_ACCOUNT" --role="roles/iam.serviceAccountUser"
+gcloud iam service-accounts add-iam-policy-binding bgg-scraping@green-carrier-297111.iam.gserviceaccount.com --member="serviceAccount:GITHUB_ACTIONS_SERVICE_ACCOUNT" --role="roles/iam.serviceAccountUser" --project=green-carrier-297111
 ```
 
 After the deployment workflow creates the job, allow the Google account that owns the Apps Script project to execute
 it. Replace `YOUR_GOOGLE_ACCOUNT` with the account's email:
 
 ```bash
-gcloud run jobs add-iam-policy-binding bgg-scraping --region=asia-northeast1 --member="user:YOUR_GOOGLE_ACCOUNT" --role="roles/run.invoker"
+gcloud run jobs add-iam-policy-binding bgg-scraping --region=asia-northeast1 --member="user:YOUR_GOOGLE_ACCOUNT" --role="roles/run.invoker" --project=green-carrier-297111
+```
+
+The same account also needs to inspect existing executions so the scheduler can skip a refresh while one is
+already running:
+
+```bash
+gcloud run jobs add-iam-policy-binding bgg-scraping --region=asia-northeast1 --member="user:YOUR_GOOGLE_ACCOUNT" --role="roles/run.viewer" --project=green-carrier-297111
 ```
 
 Share the target spreadsheet with
