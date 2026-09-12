@@ -1,44 +1,66 @@
-# Scraping BGG ranking data
+# BGG scraping
 
-[![npm puppeteer package](https://img.shields.io/npm/v/puppeteer.svg)](https://npmjs.org/package/puppeteer)
+This project refreshes the board-game data consumed by
+[bgg-explorer](https://github.com/watabean/bgg-explorer).
 
-This project scrapes board game ranking data from [BoardGameGeek (BGG)](https://boardgamegeek.com/) and provides the following functionality:
+## Architecture
 
-- Export ranking data as a CSV file for analysis.
-- Run a local server to simulate a cloud function for retrieving ranking data dynamically.
+```mermaid
+flowchart LR
+  GAS[Apps Script<br/>daily trigger] --> JOB[Cloud Run Job<br/>bgg-scraping]
+  JOB --> BGG[BoardGameGeek]
+  JOB --> SHEETS[(Google Sheets<br/>data + metadata)]
+  SHEETS --> EXPLORER[bgg-explorer<br/>GitHub Pages]
+```
 
-## Before Installation
+Apps Script calls the Cloud Run Jobs API and returns as soon as the execution has started. The job performs the
+long-running scrape, validates the complete result, and then replaces the `data` sheet. A partial scrape therefore
+does not destroy the last successful dataset.
 
-Make sure you have [Volta](https://volta.sh/) installed.  
-Volta ensures you are using the correct Node.js and npm versions for this project. Follow the instructions on their website to set it up.
+The `metadata` sheet records `lastUpdatedAt`, `itemCount`, `source`, and `schemaVersion` after each successful refresh.
 
-## Installation
+## Local setup
+
+Install the Volta-managed Node.js and npm versions, then install dependencies:
 
 ```bash
 npm install
 ```
 
-## Run
-
-### 1. Export BGG Ranking Data to CSV
-
-Run the following command to scrape the data and output it as a [CSV file](output/out.csv):
+Run the existing local CSV export:
 
 ```bash
 npm start
 ```
 
-### 2. Setup a Local Server (Cloud Functions Simulation)
+To refresh Google Sheets locally, configure Application Default Credentials and the environment variables below,
+then run:
 
-Run the following commands to set up a local server:
+```bash
+npm run refresh-sheet
+```
+
+Build, test, and lint:
 
 ```bash
 npm run build
-npx functions-framework --target=scrapingBGG
+npm test
+npm run lint
 ```
 
-You can test the server by sending a request:
+## Cloud Run Job configuration
 
-```bash
-curl http://localhost:8080/
-```
+The deployed job runs `dist/job.js` using a single task. Its runtime service account must have editor access to the
+target spreadsheet.
+
+| Environment variable  | Default    | Purpose                                                |
+| --------------------- | ---------- | ------------------------------------------------------ |
+| `SPREADSHEET_ID`      | required   | Target spreadsheet ID                                  |
+| `DATA_SHEET_NAME`     | `data`     | Dataset consumed by bgg-explorer                       |
+| `METADATA_SHEET_NAME` | `metadata` | Refresh metadata                                       |
+| `MIN_ITEM_COUNT`      | `450`      | Prevents partial data from replacing the current sheet |
+
+Deployment is handled by `.github/workflows/main.yml`. The workflow deploys a Cloud Run Job with a 30-minute task
+timeout and one retry.
+
+See [gas/README.md](gas/README.md) for the one-time Google Cloud and Apps Script setup.

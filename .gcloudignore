@@ -2,7 +2,8 @@
 *
 
 # But include these:
-!.
 !package.json
 !package-lock.json
-!/dist/**
+!.puppeteerrc.cjs
+!dist/
+!dist/**
