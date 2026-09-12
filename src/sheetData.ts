@@ -67,10 +67,10 @@ export const assertValidItems = (items: Item[], minimumItemCount: number): void 
     }
     ranks.add(item.rank);
 
-    if (!item.title.trim()) {
+    if (typeof item.title !== "string" || !item.title.trim()) {
       throw new Error(`Missing title at rank ${item.rank}`);
     }
-    if (!item.url.startsWith("https://boardgamegeek.com/boardgame/")) {
+    if (typeof item.url !== "string" || !item.url.startsWith("https://boardgamegeek.com/boardgame/")) {
       throw new Error(`Invalid BGG URL at rank ${item.rank}: ${item.url}`);
     }
     if (!Number.isFinite(item.score) || !Number.isFinite(item.weight)) {
@@ -79,6 +79,27 @@ export const assertValidItems = (items: Item[], minimumItemCount: number): void 
     if (!Array.isArray(item.bestPlayers) || !Array.isArray(item.designers)) {
       throw new Error(`Invalid list data at rank ${item.rank}`);
     }
+    if (item.bestPlayers.length === 0 || !item.bestPlayers.every((player) => Number.isInteger(player) && player > 0)) {
+      throw new Error(`Invalid best-player data at rank ${item.rank}`);
+    }
+    if (
+      item.designers.length === 0 ||
+      !item.designers.every((designer) => typeof designer === "string" && designer.trim().length > 0)
+    ) {
+      throw new Error(`Invalid designer data at rank ${item.rank}`);
+    }
+  }
+
+  for (let expectedRank = 1; expectedRank <= items.length; expectedRank += 1) {
+    if (!ranks.has(expectedRank)) {
+      throw new Error(`Missing rank: ${expectedRank}`);
+    }
+  }
+};
+
+export const assertDistinctSheetNames = (dataSheetName: string, metadataSheetName: string): void => {
+  if (dataSheetName === metadataSheetName) {
+    throw new Error("DATA_SHEET_NAME and METADATA_SHEET_NAME must be different");
   }
 };
 
@@ -115,6 +136,7 @@ export const replaceSheetData = async (items: Item[], now: Date = new Date()): P
   const minimumItemCount = getMinimumItemCount();
   const updatedAt = now.toISOString();
 
+  assertDistinctSheetNames(dataSheetName, metadataSheetName);
   assertValidItems(items, minimumItemCount);
 
   const auth = new google.auth.GoogleAuth({
@@ -125,34 +147,35 @@ export const replaceSheetData = async (items: Item[], now: Date = new Date()): P
   await ensureSheetsExist(sheets, spreadsheetId, [dataSheetName, metadataSheetName]);
 
   const rows = createSheetRows(items);
-  await sheets.spreadsheets.values.batchUpdate({
+  await sheets.spreadsheets.values.update({
     spreadsheetId,
+    range: `${quoteSheetName(dataSheetName)}!A1`,
+    valueInputOption: "RAW",
     requestBody: {
-      valueInputOption: "RAW",
-      data: [
-        {
-          range: `${quoteSheetName(dataSheetName)}!A1`,
-          majorDimension: "ROWS",
-          values: rows,
-        },
-        {
-          range: `${quoteSheetName(metadataSheetName)}!A1`,
-          majorDimension: "ROWS",
-          values: [
-            ["key", "value"],
-            ["lastUpdatedAt", updatedAt],
-            ["itemCount", items.length],
-            ["source", "BoardGameGeek"],
-            ["schemaVersion", 1],
-          ],
-        },
-      ],
+      majorDimension: "ROWS",
+      values: rows,
     },
   });
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
     range: `${quoteSheetName(dataSheetName)}!A${rows.length + 1}:I`,
+  });
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${quoteSheetName(metadataSheetName)}!A1`,
+    valueInputOption: "RAW",
+    requestBody: {
+      majorDimension: "ROWS",
+      values: [
+        ["key", "value"],
+        ["lastUpdatedAt", updatedAt],
+        ["itemCount", items.length],
+        ["source", "BoardGameGeek"],
+        ["schemaVersion", 1],
+      ],
+    },
   });
 
   return {

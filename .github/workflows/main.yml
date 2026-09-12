@@ -51,7 +51,7 @@ jobs:
             --service-account ${{ env.JOB_SERVICE_ACCOUNT }} \
             --command node \
             --args dist/job.js \
-            --memory 1GiB \
+            --memory 1Gi \
             --tasks 1 \
             --max-retries 1 \
             --task-timeout 1800s \
