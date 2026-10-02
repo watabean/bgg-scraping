@@ -2,6 +2,11 @@
 
 ## Production scheduler
 
+As of 2026-10-03 JST, this scheduler is PAUSED: the repaired container starts, but BGG
+returns HTTP 403 (`Attention Required! | Cloudflare`, `Sorry, you have been blocked`).
+No sheet refresh has completed. Resolve access with BGG or migrate to its authorized
+XML API before resuming `bgg-scraping-daily`. Do not work around the security block.
+
 Production uses Cloud Scheduler `bgg-scraping-daily` in `asia-northeast1`, with schedule
 `0 3 * * *` and timezone `Asia/Tokyo`. It POSTs `{}` to the Cloud Run v2 Job `:run` endpoint
 using the existing `bgg-scraping@green-carrier-297111.iam.gserviceaccount.com` identity and OAuth
