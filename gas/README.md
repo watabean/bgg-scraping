@@ -1,5 +1,22 @@
 # Apps Script scheduler
 
+## Production scheduler
+
+Production uses Cloud Scheduler `bgg-scraping-daily` in `asia-northeast1`, with schedule
+`0 3 * * *` and timezone `Asia/Tokyo`. It POSTs `{}` to the Cloud Run v2 Job `:run` endpoint
+using the existing `bgg-scraping@green-carrier-297111.iam.gserviceaccount.com` identity and OAuth
+scope `https://www.googleapis.com/auth/cloud-platform`. That identity has `roles/run.invoker`
+on this job. No service-account key or user OAuth refresh token is required.
+
+The previous Apps Script daily trigger was removed. Do not install it alongside Cloud Scheduler.
+The Apps Script instructions below are retained for optional manual use; external OAuth apps
+in Testing mode expire their authorization after seven days and are unsuitable for unattended scheduling.
+
+The deployment uses the Dockerfile to install Chrome's OS dependencies and compile TypeScript.
+Cloud Run sets `CLOUD_RUN_JOB`, enabling the browser arguments required in the Cloud Run container.
+Check Cloud Run execution completion and the `metadata` sheet after deployment; Scheduler success
+only confirms that Cloud Run accepted the start request, not that scraping and sheet updates succeeded.
+
 The time-driven trigger calls the Cloud Run Jobs API and finishes as soon as the job execution has started. The
 `bgg-scraping` job then scrapes BoardGameGeek and replaces the Google Sheets data only after validation succeeds.
 
