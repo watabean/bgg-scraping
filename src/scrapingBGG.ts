@@ -3,7 +3,10 @@ import { Item } from "./commons";
 import { scrapeBoardGameDetails, scrapeBoardGameList } from "./scrapingBGGHelper";
 
 const initializeBrowser = async (): Promise<{ browser: Browser; page: Page }> => {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: process.env.CLOUD_RUN_JOB ? ["--no-sandbox", "--disable-dev-shm-usage"] : [],
+  });
   const page = await browser.newPage();
   return { browser, page };
 };

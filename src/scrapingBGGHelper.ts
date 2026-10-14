@@ -13,8 +13,18 @@ export const scrapeBoardGameList = async (page: Page): Promise<Item[]> => {
   for (let i = 1; i <= MAX_PAGE; i++) {
     const url = `https://boardgamegeek.com/browse/boardgame/page/${i}`;
     console.log(`Fetching ranking data from ${url}`);
-    await page.goto(url);
-    await page.waitForSelector(`#results_objectname1`);
+    const response = await page.goto(url);
+    try {
+      await page.waitForSelector(`#results_objectname1`);
+    } catch (error) {
+      console.error("BGG ranking page unavailable", {
+        status: response?.status(),
+        url: page.url(),
+        title: await page.title(),
+        text: await page.evaluate(() => document.body.innerText.slice(0, 1000)),
+      });
+      throw error;
+    }
     const pageItems = await page.evaluate(() =>
       [...document.querySelectorAll("#row_")].map(
         (el, j) =>
